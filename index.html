@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Health Coach — Andrea Brunelli</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1d9e75">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Health Coach">
 <link rel="apple-touch-icon" href="icon-192.png">
+<title>Health Coach — Andrea Brunelli</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -1243,6 +1243,64 @@ new Chart(document.getElementById('lipidChart'),{
   }
 });
 
+// ===================== PERSISTENZA localStorage =====================
+const LS_KEY = 'hc_data_v1';
+
+function saveAll() {
+  try {
+    // Salva solo gli alimenti aggiunti dall'utente (non quelli predefiniti)
+    const defaultCount = 433; // numero approssimativo alimenti predefiniti — usiamo nome come chiave
+    const defaultNames = new Set(FOODS.slice(0, defaultCount).map(f => f.name));
+    const customFoods = FOODS.filter(f => !defaultNames.has(f.name));
+    localStorage.setItem(LS_KEY, JSON.stringify({
+      todayMeals,
+      bpList,
+      garminLog,
+      weightLog,
+      customFoods,
+    }));
+  } catch(e) {}
+}
+
+function loadAll() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    if (Array.isArray(d.todayMeals))  todayMeals  = d.todayMeals;
+    if (Array.isArray(d.bpList))      bpList      = d.bpList;
+    if (Array.isArray(d.garminLog))   garminLog   = d.garminLog;
+    if (Array.isArray(d.weightLog))   weightLog   = d.weightLog;
+    if (Array.isArray(d.customFoods)) {
+      d.customFoods.forEach(f => {
+        if (!FOODS.some(e => e.name === f.name)) {
+          FOODS.push(f);
+          if (!CATS.includes(f.cat)) CATS.push(f.cat);
+        }
+      });
+    }
+  } catch(e) {}
+}
+
+// Patch delle funzioni che modificano i dati per salvare automaticamente
+const _origDeleteMeal = deleteMeal;
+deleteMeal = function(i) { _origDeleteMeal(i); saveAll(); };
+
+const _origSelectFood = selectFood;
+selectFood = function(name, score, ldlImpact) { _origSelectFood(name, score, ldlImpact); saveAll(); };
+
+const _origAddBP = addBP;
+addBP = function() { _origAddBP(); saveAll(); };
+
+const _origAddWeight = addWeight;
+addWeight = function() { _origAddWeight(); saveAll(); };
+
+const _origAddGarmin = addGarmin;
+addGarmin = function() { _origAddGarmin(); saveAll(); };
+
+const _origSaveOnlineFood = saveOnlineFood;
+saveOnlineFood = function(idx, btn) { _origSaveOnlineFood(idx, btn); saveAll(); };
+
 // ===================== INIT =====================
 function showScreen(id,btn){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -1251,11 +1309,13 @@ function showScreen(id,btn){
   btn.classList.add('active');
 }
 
+loadAll();
 renderMeals();
 renderCoach();
 computeDailyScore();
 updateWeightChart();
 renderWeightList();
+renderBPList();
 renderGarmin();
 document.getElementById('wt-date').value = new Date().toISOString().split('T')[0];
 </script>
