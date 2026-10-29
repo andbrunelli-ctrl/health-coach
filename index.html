@@ -736,80 +736,103 @@ function selectFood(name,score,ldl) {
   renderMeals();
 }
 
-// ===================== OPEN FOOD FACTS (sample) =====================
-let sampleFn = null;
-let sampleUnavailable = false;
+// ===================== OPEN FOOD FACTS (API diretta) =====================
 let lastOnlineResults = [];
 
-async function getSample() {
-  if(sampleUnavailable) return null;
-  if(sampleFn) return sampleFn;
-  try {
-    sampleFn = await window.claude.use('sample');
-    if(!sampleFn) sampleUnavailable = true;
-    return sampleFn;
-  } catch(e) {
-    sampleUnavailable = true;
-    return null;
-  }
+function offLdlScore(fiber, fat_sat) {
+  let impact = 0;
+  if(fiber >= 5) impact -= 5;
+  else if(fiber >= 3) impact -= 3;
+  else if(fiber >= 1) impact -= 1;
+  if(fat_sat >= 8) impact += 4;
+  else if(fat_sat >= 4) impact += 2;
+  else if(fat_sat >= 2) impact += 1;
+  const score = impact <= -2 ? 'A+' : impact <= 0 ? 'A' : impact <= 2 ? 'B' : 'C';
+  return { ldlImpact: impact, score };
+}
+
+function offCategory(tags) {
+  if(!tags) return 'Altro';
+  const t = tags.join(' ').toLowerCase();
+  if(t.includes('fish') || t.includes('seafood') || t.includes('pesce')) return 'Pesce';
+  if(t.includes('vegetable') || t.includes('verdure')) return 'Verdure';
+  if(t.includes('fruit') || t.includes('frutta')) return 'Frutta';
+  if(t.includes('legume') || t.includes('legumi') || t.includes('bean')) return 'Legumi';
+  if(t.includes('dairy') || t.includes('latte') || t.includes('formaggi')) return 'Latticini';
+  if(t.includes('cereal') || t.includes('bread') || t.includes('pasta') || t.includes('grain')) return 'Cereali';
+  if(t.includes('meat') || t.includes('carne') || t.includes('poultry')) return 'Proteine';
+  if(t.includes('oil') || t.includes('olio') || t.includes('condiment')) return 'Condimenti';
+  if(t.includes('nuts') || t.includes('seeds') || t.includes('frutta secca')) return 'Frutta secca';
+  return 'Altro';
+}
+
+function offDesc(ldlImpact, score) {
+  if(score === 'A+') return 'Ottimo per il colesterolo LDL';
+  if(score === 'A') return 'Neutro per il colesterolo LDL';
+  if(score === 'B') return 'Consumo moderato consigliato';
+  return 'Limitare: impatto LDL significativo';
 }
 
 async function searchOnline() {
   const q = document.getElementById('food-search').value.trim();
-  if(!q) {
-    document.getElementById('food-search').focus();
-    return;
-  }
+  if(!q) { document.getElementById('food-search').focus(); return; }
   const btn = document.getElementById('online-btn');
   const out = document.getElementById('online-results');
-
-  const sample = await getSample();
-  if(!sample) {
-    out.innerHTML = '<div class="online-status">⚠️ Ricerca online non disponibile in questa sessione</div>';
-    return;
-  }
 
   btn.disabled = true;
   btn.innerHTML = '⏳ Ricerca in corso…';
   out.innerHTML = '<div class="online-status">🌐 Cerco su Open Food Facts…</div>';
 
-  const prompt = `Sei un nutrizionista esperto in cardiologia. Cerca il prodotto alimentare "${q}" su Open Food Facts (openfoodfacts.org).
-
-Rispondi SOLO con un array JSON (nessun testo fuori dal JSON) di massimo 5 risultati con questo schema:
-[{"name":"Nome prodotto in italiano","brand":"Marca o vuoto","cat":"Categoria (es. Cereali, Pesce, Verdure, Frutta, Legumi, Latticini, Proteine, Condimenti, Altro)","kcal":0,"fat_sat":0.0,"fiber":0.0,"omega3":0.0,"ldlImpact":0,"score":"A+","desc":"Beneficio o avvertenza per il colesterolo LDL in 6-8 parole"}]
-
-Regole per ldlImpact (variazione LDL in mg/dL per porzione tipica):
-- Alimenti ricchi di fibre solubili (avena, legumi, frutta): da -3 a -8
-- Pesce grasso (omega-3): da -3 a -5
-- Verdure, frutta fresca: da -1 a -3
-- Olio EVO, frutta secca: da -2 a -4
-- Carne magra, pesce magro: 0
-- Uova: +1 a +2
-- Formaggi, latticini interi: +2 a +5
-- Salumi, carni grasse: +3 a +6
-- Prodotti ultra-processati, zuccheri: +1 a +4
-
-Score: A+ se ldlImpact <=-2, A se -1 o 0, B se 1-2, C se >=3`;
-
   try {
-    const results = await sample.json(prompt, {modelTier: 'quick', cache: {gcTime: 300000}});
-    if(!Array.isArray(results) || !results.length) throw new Error('empty');
-    lastOnlineResults = results;
+    const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&json=1&page_size=8&fields=product_name,brands,categories_tags,nutriments,image_small_url`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if(!res.ok) throw new Error('http_' + res.status);
+    const data = await res.json();
+
+    const products = (data.products || []).filter(p => p.product_name && p.nutriments);
+    if(!products.length) {
+      out.innerHTML = `<div class="online-status">⚠️ Nessun risultato trovato per "${q}"</div>`;
+      btn.innerHTML = '🌐 Cerca su Open Food Facts';
+      btn.disabled = false;
+      return;
+    }
+
+    lastOnlineResults = products.slice(0, 5).map(p => {
+      const nm  = p.nutriments;
+      const fiber   = parseFloat(nm['fiber_100g'] || nm['fiber_serving'] || 0);
+      const fat_sat = parseFloat(nm['saturated-fat_100g'] || nm['saturated-fat_serving'] || 0);
+      const kcal    = Math.round(parseFloat(nm['energy-kcal_100g'] || nm['energy-kcal_serving'] || 0));
+      const omega3  = parseFloat(nm['omega-3-fat_100g'] || 0);
+      const { ldlImpact, score } = offLdlScore(fiber, fat_sat);
+      const cat = offCategory(p.categories_tags);
+      return {
+        name: p.product_name,
+        brand: p.brands || '',
+        cat,
+        kcal,
+        fat_sat: Math.round(fat_sat * 10) / 10,
+        fiber: Math.round(fiber * 10) / 10,
+        omega3: Math.round(omega3 * 100) / 100,
+        ldlImpact,
+        score,
+        desc: offDesc(ldlImpact, score)
+      };
+    });
 
     const html = `
       <div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.4px;margin:4px 0 8px">🌐 Open Food Facts — "${q}"</div>
-      ${results.map(r => {
+      ${lastOnlineResults.map((r, idx) => {
         const cls = r.score==='A+'||r.score==='A' ? 'score-a' : r.score==='B' ? 'score-b' : 'score-c';
         const impCls = r.ldlImpact<0 ? 'good' : r.ldlImpact>0 ? 'bad' : 'neutral';
         const sign = r.ldlImpact>0 ? '+' : '';
         const nameEsc = r.name.replace(/'/g,"\\'").replace(/"/g,'&quot;');
         const alreadySaved = FOODS.some(f=>f.name.toLowerCase()===r.name.toLowerCase());
-        const idx = results.indexOf(r);
         return `<div class="food-option" style="flex-direction:column;align-items:stretch;gap:8px;padding-bottom:10px">
           <div style="display:flex;align-items:center">
             <div style="flex:1">
               <div class="food-option-name">${r.name}${r.brand?' <span style="color:#aaa;font-size:11px">('+r.brand+')</span>':''}</div>
-              <div class="food-option-detail">${r.cat}${r.kcal?' · '+r.kcal+' kcal':''} · ${r.desc}</div>
+              <div class="food-option-detail">${r.cat}${r.kcal?' · '+r.kcal+' kcal/100g':''} · fibre ${r.fiber}g · grassi sat. ${r.fat_sat}g</div>
+              <div class="food-option-detail" style="color:#666">${r.desc}</div>
             </div>
             <div class="food-option-impact">
               <div class="meal-score ${cls}" style="margin-bottom:4px">${r.score}</div>
@@ -818,30 +841,24 @@ Score: A+ se ldlImpact <=-2, A se -1 o 0, B se 1-2, C se >=3`;
           </div>
           <div style="display:flex;gap:6px">
             <button onclick="selectFood('${nameEsc}','${r.score}',${r.ldlImpact})" style="flex:1;background:#1d9e75;color:#fff;border:none;border-radius:8px;padding:8px;font-size:13px;font-weight:600;cursor:pointer">+ Aggiungi al diario</button>
-            <button id="save-btn-${idx}" onclick="saveOnlineFood(${idx},this)" style="background:${alreadySaved?'#e1f5ee':'#f0f0ea'};border:none;border-radius:8px;padding:8px 12px;font-size:13px;font-weight:600;cursor:pointer;color:${alreadySaved?'#0f6e56':'#555'}" ${alreadySaved?'disabled':''} title="${alreadySaved?'Gia nel database':'Salva nel database locale'}">${alreadySaved?'✅ Salvato':'💾 Salva'}</button>
+            <button id="save-btn-${idx}" onclick="saveOnlineFood(${idx},this)" style="background:${alreadySaved?'#e1f5ee':'#f0f0ea'};border:none;border-radius:8px;padding:8px 12px;font-size:13px;font-weight:600;cursor:pointer;color:${alreadySaved?'#0f6e56':'#555'}" ${alreadySaved?'disabled':''} title="${alreadySaved?'Già nel database':'Salva nel database locale'}">${alreadySaved?'✅ Salvato':'💾 Salva'}</button>
           </div>
         </div>`;
       }).join('')}`;
 
     out.innerHTML = html;
-    btn.innerHTML = '✅ ' + results.length + ' risultat' + (results.length===1?'o':'i') + ' trovati';
+    btn.innerHTML = '✅ ' + lastOnlineResults.length + ' risultat' + (lastOnlineResults.length===1?'o':'i') + ' trovati';
   } catch(e) {
-    const code = e?.code;
-    if(code==='not_granted'||code==='sampling_disabled'||code==='capability_disabled') {
-      sampleUnavailable = true;
-      out.innerHTML = '<div class="online-status">Ricerca online non autorizzata — usa il database locale</div>';
-      btn.style.display = 'none';
-    } else if(code==='rate_limited') {
-      out.innerHTML = '<div class="online-status">⏳ Troppe richieste, riprova tra qualche secondo</div>';
-      btn.innerHTML = '🌐 Cerca su Open Food Facts';
+    if(e.name === 'TimeoutError') {
+      out.innerHTML = '<div class="online-status">⏳ Timeout — riprova tra qualche secondo</div>';
     } else {
-      out.innerHTML = '<div class="online-status">⚠️ Nessun risultato trovato per "'+q+'"</div>';
-      btn.innerHTML = '🌐 Cerca su Open Food Facts';
+      out.innerHTML = `<div class="online-status">⚠️ Errore di rete — verifica la connessione</div>`;
     }
+    btn.innerHTML = '🌐 Cerca su Open Food Facts';
   } finally {
     btn.disabled = false;
     if(btn.innerHTML.startsWith('✅')) {
-      setTimeout(()=>{btn.innerHTML='🌐 Cerca su Open Food Facts';},3000);
+      setTimeout(()=>{ btn.innerHTML='🌐 Cerca su Open Food Facts'; }, 3000);
     }
   }
 }
@@ -1226,13 +1243,6 @@ new Chart(document.getElementById('lipidChart'),{
   }
 });
 
-// ===================== SERVICE WORKER =====================
-if('serviceWorker' in navigator){
-  window.addEventListener('load', ()=>{
-    navigator.serviceWorker.register('sw.js').catch(()=>{});
-  });
-}
-
 // ===================== INIT =====================
 function showScreen(id,btn){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -1248,6 +1258,11 @@ updateWeightChart();
 renderWeightList();
 renderGarmin();
 document.getElementById('wt-date').value = new Date().toISOString().split('T')[0];
+</script>
+<script>
+if('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
 </script>
 </body>
 </html>
