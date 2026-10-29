@@ -1,0 +1,1253 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Health Coach — Andrea Brunelli</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1d9e75">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Health Coach">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f0;color:#1a1a18;min-height:100vh;padding-bottom:80px}
+.nav{background:#fff;border-bottom:1px solid #e5e5e0;display:flex;justify-content:space-around;padding:12px 0;position:fixed;bottom:0;left:0;right:0;z-index:10}
+.nav-btn{background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;color:#888;padding:4px 16px;border-radius:8px;transition:color .2s}
+.nav-btn.active{color:#1d9e75}
+.nav-btn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.screen{display:none;padding:16px;max-width:480px;margin:0 auto}
+.screen.active{display:block}
+
+/* Coach box */
+.coach-box{border-radius:16px;padding:20px;margin-bottom:16px;position:relative;overflow:hidden}
+.coach-box.verde{background:linear-gradient(135deg,#1d9e75,#0f6e56);color:#fff}
+.coach-box.arancio{background:linear-gradient(135deg,#ef9f27,#854f0b);color:#fff}
+.coach-box.blu{background:linear-gradient(135deg,#378add,#0c447c);color:#fff}
+.coach-label{font-size:11px;opacity:.8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.coach-text{font-size:15px;font-weight:500;line-height:1.4}
+.coach-sub{font-size:12px;opacity:.8;margin-top:8px}
+.coach-reasons{margin-top:12px;border-top:1px solid rgba(255,255,255,.25);padding-top:10px}
+.coach-reason{font-size:12px;opacity:.85;margin-bottom:4px;display:flex;gap:6px}
+
+/* Cards */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.card{background:#fff;border-radius:12px;padding:16px;border:1px solid #e8e8e3}
+.card-label{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px}
+.card-value{font-size:26px;font-weight:600;line-height:1.1}
+.card-sub{font-size:12px;color:#888;margin-top:4px}
+.ldl .card-value{color:#e24b4a}
+.hdl .card-value{color:#1d9e75}
+.trig .card-value{color:#ba7517}
+.weight .card-value{color:#185fa5}
+.bar-wrap{margin-top:8px}
+.bar-track{background:#f0f0ea;border-radius:99px;height:6px;overflow:hidden}
+.bar-fill{height:100%;border-radius:99px;transition:width .5s}
+.bar-ldl{background:#e24b4a}
+.bar-hdl{background:#1d9e75}
+.bar-trig{background:#ba7517}
+.section-title{font-size:12px;font-weight:600;color:#888;margin:20px 0 10px;text-transform:uppercase;letter-spacing:.5px}
+
+/* Diary */
+.meal-item{background:#fff;border-radius:10px;padding:14px 16px;margin-bottom:8px;border:1px solid #e8e8e3;display:flex;justify-content:space-between;align-items:center;cursor:pointer;position:relative;overflow:hidden;transition:transform .15s}
+.meal-name{font-size:14px;font-weight:500}
+.meal-time{font-size:12px;color:#888;margin-top:2px}
+.meal-delete{background:none;border:none;cursor:pointer;color:#ccc;font-size:18px;padding:4px 6px;border-radius:6px;transition:color .2s;flex-shrink:0;margin-left:6px}
+.meal-delete:hover{color:#e24b4a;background:#fcebeb}
+.meal-row{display:flex;align-items:center;gap:0;width:100%}
+.meal-score{font-size:13px;font-weight:600;padding:4px 10px;border-radius:99px}
+.score-a{background:#e1f5ee;color:#0f6e56}
+.score-b{background:#faeeda;color:#854f0b}
+.score-c{background:#fcebeb;color:#a32d2d}
+.add-btn{background:#1d9e75;color:#fff;border:none;border-radius:12px;width:100%;padding:14px;font-size:15px;font-weight:600;cursor:pointer;margin-top:8px;transition:background .2s}
+.add-btn:hover{background:#0f6e56}
+
+/* Daily score banner */
+.daily-score{background:#fff;border-radius:12px;padding:14px 16px;border:1px solid #e8e8e3;margin-bottom:16px;display:flex;align-items:center;gap:12px}
+.daily-score-circle{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;flex-shrink:0}
+.daily-score-text{font-size:13px;color:#555;line-height:1.5}
+
+/* Food search modal */
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:flex-end}
+.modal.open{display:flex}
+.modal-box{background:#fff;border-radius:20px 20px 0 0;padding:20px;width:100%;max-height:85vh;overflow-y:auto}
+.modal-title{font-size:17px;font-weight:600;margin-bottom:12px}
+.food-search{width:100%;border:1px solid #ddd;border-radius:10px;padding:12px;font-size:15px;margin-bottom:8px;outline:none}
+.food-search:focus{border-color:#1d9e75}
+.online-search-btn{width:100%;background:#f0f9f5;border:1px solid #d0e8df;border-radius:10px;padding:10px;font-size:13px;font-weight:600;color:#0f6e56;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:6px;transition:background .2s}
+.online-search-btn:hover{background:#e1f5ee}
+.online-search-btn:disabled{opacity:.6;cursor:default}
+.online-result{padding:12px 4px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #f5f5f0}
+.online-result:hover{background:#f9f9f7;border-radius:8px}
+.online-status{text-align:center;padding:16px;font-size:13px;color:#888}
+.food-option{padding:12px 4px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #f5f5f0}
+.food-option:hover{background:#f9f9f7;border-radius:8px}
+.food-option-name{font-size:14px;font-weight:500}
+.food-option-detail{font-size:11px;color:#888;margin-top:2px}
+.food-option-impact{text-align:right}
+.food-impact-ldl{font-size:12px;font-weight:600}
+.food-impact-ldl.good{color:#1d9e75}
+.food-impact-ldl.bad{color:#e24b4a}
+.food-impact-ldl.neutral{color:#888}
+.close-btn{background:#f0f0ea;border:none;border-radius:99px;padding:8px 20px;cursor:pointer;font-size:14px;margin-bottom:12px;float:right}
+.filter-pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.pill{padding:5px 12px;border-radius:99px;font-size:12px;cursor:pointer;border:1px solid #ddd;background:#fff;transition:all .2s}
+.pill.active{background:#1d9e75;color:#fff;border-color:#1d9e75}
+
+/* Health */
+.analysis-item{background:#fff;border-radius:10px;padding:14px 16px;margin-bottom:8px;border:1px solid #e8e8e3}
+.analysis-date{font-size:12px;color:#888;margin-bottom:8px}
+.analysis-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.param{text-align:center}
+.param-name{font-size:10px;color:#888;text-transform:uppercase}
+.param-val{font-size:16px;font-weight:700}
+.param-ok{color:#1d9e75}
+.param-warn{color:#e24b4a}
+.input-row{display:flex;gap:8px;margin-bottom:12px}
+.input-row input{flex:1;border:1px solid #ddd;border-radius:8px;padding:10px 12px;font-size:14px}
+.input-row button{background:#1d9e75;color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:14px;cursor:pointer;font-weight:600}
+.pressure-item{background:#fff;border-radius:10px;padding:14px 16px;margin-bottom:8px;border:1px solid #e8e8e3;display:flex;justify-content:space-between;align-items:center}
+.chart-wrap{background:#fff;border-radius:12px;padding:16px;margin-bottom:16px;border:1px solid #e8e8e3}
+.badge{display:inline-block;font-size:11px;padding:3px 8px;border-radius:99px;font-weight:600}
+.badge-ok{background:#e1f5ee;color:#0f6e56}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <button class="nav-btn active" onclick="showScreen('home',this)">
+    <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    Home
+  </button>
+  <button class="nav-btn" onclick="showScreen('diary',this)">
+    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    Diario
+  </button>
+  <button class="nav-btn" onclick="showScreen('health',this)">
+    <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+    Salute
+  </button>
+  <button class="nav-btn" onclick="showScreen('profile',this)">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+    Profilo
+  </button>
+</nav>
+
+<!-- HOME -->
+<div id="home" class="screen active">
+  <div style="margin-top:16px" id="coach-container"></div>
+
+  <div class="grid2">
+    <div class="card ldl">
+      <div class="card-label">LDL</div>
+      <div class="card-value">109</div>
+      <div class="card-sub">target &lt;115 ✅</div>
+      <div class="bar-wrap"><div class="bar-track"><div class="bar-fill bar-ldl" style="width:72%"></div></div></div>
+    </div>
+    <div class="card hdl">
+      <div class="card-label">HDL</div>
+      <div class="card-value">43</div>
+      <div class="card-sub">target &gt;40 ✅</div>
+      <div class="bar-wrap"><div class="bar-track"><div class="bar-fill bar-hdl" style="width:55%"></div></div></div>
+    </div>
+    <div class="card trig">
+      <div class="card-label">Trigliceridi</div>
+      <div class="card-value">91</div>
+      <div class="card-sub">target &lt;150 ✅</div>
+      <div class="bar-wrap"><div class="bar-track"><div class="bar-fill bar-trig" style="width:61%"></div></div></div>
+    </div>
+    <div class="card weight">
+      <div class="card-label">Peso</div>
+      <div class="card-value">97.6</div>
+      <div class="card-sub">−3.9 kg dal via 📉</div>
+      <div class="bar-wrap"><div class="bar-track"><div class="bar-fill" style="width:55%;background:#185fa5"></div></div></div>
+    </div>
+  </div>
+
+  <div class="section-title">Attività recente</div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <span style="font-size:14px;font-weight:500">Tapis roulant — 23 set</span>
+      <span class="badge badge-ok">5.91 km</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;text-align:center">
+      <div><div style="font-size:18px;font-weight:700">570</div><div style="font-size:11px;color:#888">kcal</div></div>
+      <div><div style="font-size:18px;font-weight:700">48'</div><div style="font-size:11px;color:#888">durata</div></div>
+      <div><div style="font-size:18px;font-weight:700">138</div><div style="font-size:11px;color:#888">bpm</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- DIARIO -->
+<div id="diary" class="screen">
+  <div style="margin-top:16px" id="daily-score-wrap"></div>
+  <div class="section-title">Pasti di oggi</div>
+  <div id="meal-list"></div>
+  <button class="add-btn" onclick="openModal()">+ Aggiungi pasto</button>
+
+  <div class="section-title">Preferiti ⭐</div>
+  <div class="meal-item" onclick="quickAdd('Pasta al tonno e pomodoro','A+','Omega-3 + licopene')">
+    <div><div class="meal-name">Pasta al tonno e pomodoro</div><div class="meal-time">Omega-3 + licopene · LDL −4</div></div>
+    <span class="meal-score score-a">A+</span>
+  </div>
+  <div class="meal-item" onclick="quickAdd('Branzino alla griglia','A+','Omega-3 +++')">
+    <div><div class="meal-name">Branzino alla griglia</div><div class="meal-time">Omega-3 +++ · LDL −5</div></div>
+    <span class="meal-score score-a">A+</span>
+  </div>
+  <div class="meal-item" onclick="quickAdd('Crema di fagioli con EVO','A+','Fibre solubili +++')">
+    <div><div class="meal-name">Crema di fagioli con EVO</div><div class="meal-time">Fibre solubili +++ · LDL −4</div></div>
+    <span class="meal-score score-a">A+</span>
+  </div>
+  <div class="meal-item" onclick="quickAdd('Uova strapazzate con EVO','B','Proteine + B12')">
+    <div><div class="meal-name">Uova strapazzate con EVO</div><div class="meal-time">Proteine + B12 · LDL +1</div></div>
+    <span class="meal-score score-b">B</span>
+  </div>
+</div>
+
+<!-- SALUTE -->
+<div id="health" class="screen">
+  <div class="section-title" style="margin-top:16px">Profilo lipidico nel tempo</div>
+  <div class="chart-wrap">
+    <div style="display:flex;gap:16px;margin-bottom:12px;font-size:12px">
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#e24b4a;display:inline-block"></span>LDL</span>
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#1d9e75;display:inline-block"></span>HDL</span>
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#ba7517;display:inline-block"></span>Trigliceridi</span>
+    </div>
+    <div style="position:relative;height:200px">
+      <canvas id="lipidChart" role="img" aria-label="Andamento LDL da 145 a 109 mg/dL">LDL sceso da 145 a 109.</canvas>
+    </div>
+  </div>
+
+  <div class="section-title">Analisi del sangue</div>
+  <div class="analysis-item">
+    <div class="analysis-date">30 luglio 2026</div>
+    <div class="analysis-grid">
+      <div class="param"><div class="param-name">LDL</div><div class="param-val param-ok">109</div></div>
+      <div class="param"><div class="param-name">HDL</div><div class="param-val param-ok">43</div></div>
+      <div class="param"><div class="param-name">Trig.</div><div class="param-val param-ok">91</div></div>
+    </div>
+  </div>
+  <div class="analysis-item">
+    <div class="analysis-date">Luglio 2026 — iniziale</div>
+    <div class="analysis-grid">
+      <div class="param"><div class="param-name">LDL</div><div class="param-val param-warn">145</div></div>
+      <div class="param"><div class="param-name">HDL</div><div class="param-val param-ok">44</div></div>
+      <div class="param"><div class="param-name">Trig.</div><div class="param-val param-ok">66</div></div>
+    </div>
+  </div>
+
+  <div class="section-title">Pressione arteriosa</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;margin-bottom:12px;align-items:center">
+    <div>
+      <div style="font-size:11px;color:#888;margin-bottom:4px">Sistolica</div>
+      <input type="number" id="sys" placeholder="120" min="80" max="200" style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px 12px;font-size:16px;background:#fff;color:#1a1a18">
+    </div>
+    <div>
+      <div style="font-size:11px;color:#888;margin-bottom:4px">Diastolica</div>
+      <input type="number" id="dia" placeholder="80" min="50" max="130" style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px 12px;font-size:16px;background:#fff;color:#1a1a18">
+    </div>
+    <div>
+      <div style="font-size:11px;color:#888;margin-bottom:4px">Freq. cardiaca</div>
+      <input type="number" id="hr" placeholder="70" min="40" max="200" style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px 12px;font-size:16px;background:#fff;color:#1a1a18">
+    </div>
+    <div style="padding-top:18px">
+      <button onclick="addBP()" style="background:#1d9e75;color:#fff;border:none;border-radius:8px;padding:10px 14px;font-size:14px;cursor:pointer;font-weight:600;white-space:nowrap">Salva</button>
+    </div>
+  </div>
+  <div id="bp-list"><div style="color:#888;font-size:14px;text-align:center;padding:20px">Nessuna misurazione ancora</div></div>
+
+  <div class="section-title">Peso corporeo</div>
+  <div class="chart-wrap">
+    <div style="position:relative;height:160px">
+      <canvas id="weightChart" role="img" aria-label="Andamento peso da 101.5 a 97.6 kg">Peso sceso da 101.5 a 97.6 kg.</canvas>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:12px;align-items:flex-end">
+    <div>
+      <div style="font-size:11px;color:#888;margin-bottom:4px">Peso (kg)</div>
+      <input type="number" id="wt-kg" placeholder="97.6" min="40" max="250" step="0.1" style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px 12px;font-size:16px;background:#fff;color:#1a1a18">
+    </div>
+    <div>
+      <div style="font-size:11px;color:#888;margin-bottom:4px">Data</div>
+      <input type="date" id="wt-date" style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px 12px;font-size:14px;background:#fff;color:#1a1a18">
+    </div>
+    <button onclick="addWeight()" style="background:#1d9e75;color:#fff;border:none;border-radius:8px;padding:10px 14px;font-size:14px;cursor:pointer;font-weight:600">Salva</button>
+  </div>
+  <div id="weight-list"></div>
+
+  <div style="margin-bottom:16px">
+    <button onclick="exportMedico()" style="background:linear-gradient(135deg,#185fa5,#0c447c);color:#fff;border:none;border-radius:12px;width:100%;padding:14px;font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Esporta dati per il medico
+    </button>
+    <div style="font-size:11px;color:#888;text-align:center;margin-top:6px">Genera 2 file CSV · Lipidi &amp; Pressione · Pronto da allegare</div>
+  </div>
+
+  <div class="section-title">Attività Garmin / Smartwatch</div>
+  <div class="card" style="margin-bottom:12px">
+    <div style="font-size:13px;color:#555;margin-bottom:12px">Importa manualmente i dati dalla app Garmin Connect o dal tuo smartwatch:</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <div>
+        <div style="font-size:11px;color:#888;margin-bottom:4px">Distanza (km)</div>
+        <input type="number" id="g-km" placeholder="5.91" step="0.01" min="0" style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:15px;background:#fff;color:#1a1a18">
+      </div>
+      <div>
+        <div style="font-size:11px;color:#888;margin-bottom:4px">Durata (min)</div>
+        <input type="number" id="g-min" placeholder="48" min="0" style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:15px;background:#fff;color:#1a1a18">
+      </div>
+      <div>
+        <div style="font-size:11px;color:#888;margin-bottom:4px">Calorie (kcal)</div>
+        <input type="number" id="g-cal" placeholder="570" min="0" style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:15px;background:#fff;color:#1a1a18">
+      </div>
+      <div>
+        <div style="font-size:11px;color:#888;margin-bottom:4px">FC media (bpm)</div>
+        <input type="number" id="g-hr" placeholder="138" min="40" max="220" style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:15px;background:#fff;color:#1a1a18">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <div>
+        <div style="font-size:11px;color:#888;margin-bottom:4px">Passi totali</div>
+        <input type="number" id="g-steps" placeholder="12000" min="0" style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:15px;background:#fff;color:#1a1a18">
+      </div>
+      <div>
+        <div style="font-size:11px;color:#888;margin-bottom:4px">Tipo attività</div>
+        <select id="g-type" style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:14px;background:#fff;color:#1a1a18;height:44px">
+          <option>Tapis roulant</option>
+          <option>Camminata</option>
+          <option>Corsa esterna</option>
+          <option>Bici</option>
+          <option>Escursione montagna</option>
+          <option>Solo passi</option>
+        </select>
+      </div>
+    </div>
+    <button onclick="addGarmin()" style="background:#1d9e75;color:#fff;border:none;border-radius:12px;width:100%;padding:12px;font-size:14px;cursor:pointer;font-weight:600">+ Aggiungi attività</button>
+  </div>
+  <div id="garmin-list"></div>
+</div>
+
+<!-- PROFILO -->
+<div id="profile" class="screen">
+  <div class="card" style="margin-top:16px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:16px">
+      <div style="width:56px;height:56px;border-radius:50%;background:#1d9e75;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff">AB</div>
+      <div>
+        <div style="font-size:18px;font-weight:600">Andrea Brunelli</div>
+        <div style="font-size:13px;color:#888">01/03/1975 · 185 cm</div>
+      </div>
+    </div>
+  </div>
+  <div class="section-title">Obiettivi</div>
+  <div class="card" style="margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0f0ea"><span style="font-size:14px;color:#888">LDL target</span><span style="font-size:14px;font-weight:600">&lt; 115 mg/dL</span></div>
+    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0f0ea"><span style="font-size:14px;color:#888">HDL target</span><span style="font-size:14px;font-weight:600">&gt; 40 mg/dL</span></div>
+    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0f0ea"><span style="font-size:14px;color:#888">Trigliceridi</span><span style="font-size:14px;font-weight:600">&lt; 150 mg/dL</span></div>
+    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0f0ea"><span style="font-size:14px;color:#888">Lp(a)</span><span style="font-size:14px;font-weight:600;color:#e24b4a">45.3 ⚠️</span></div>
+    <div style="display:flex;justify-content:space-between;padding:8px 0"><span style="font-size:14px;color:#888">Peso obiettivo</span><span style="font-size:14px;font-weight:600">95 kg</span></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><div class="card-label">LDL abbassato</div><div class="card-value" style="color:#1d9e75">−36</div><div class="card-sub">mg/dL in 4 sett.</div></div>
+    <div class="card"><div class="card-label">Peso perso</div><div class="card-value" style="color:#185fa5">−3.9</div><div class="card-sub">kg senza dieta</div></div>
+  </div>
+
+  <div class="section-title">🍳 Le mie ricette</div>
+  <div class="card" style="margin-bottom:12px">
+    <div style="font-size:13px;color:#555;margin-bottom:12px">Crea una ricetta combinando gli ingredienti del database. Apparirà come voce singola nel diario.</div>
+    <div style="margin-bottom:8px">
+      <div style="font-size:11px;color:#888;margin-bottom:4px">Nome ricetta</div>
+      <input type="text" id="recipe-name" placeholder="es. Uova al pomodoro con ceci" style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px 12px;font-size:14px;background:#fff;color:#1a1a18">
+    </div>
+    <div style="margin-bottom:8px">
+      <div style="font-size:11px;color:#888;margin-bottom:4px">Ingredienti (cerca e aggiungi)</div>
+      <input type="text" id="recipe-ing-search" placeholder="Cerca ingrediente…" oninput="searchRecipeIng(this.value)" style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px 12px;font-size:14px;background:#fff;color:#1a1a18">
+      <div id="recipe-ing-suggestions" style="border:1px solid #e8e8e3;border-radius:8px;margin-top:4px;max-height:140px;overflow-y:auto;display:none;background:#fff"></div>
+    </div>
+    <div id="recipe-ing-list" style="margin-bottom:10px"></div>
+    <button onclick="saveRecipe()" style="background:#1d9e75;color:#fff;border:none;border-radius:10px;width:100%;padding:12px;font-size:14px;cursor:pointer;font-weight:600">💾 Salva ricetta</button>
+  </div>
+  <div id="my-recipes-list" style="margin-bottom:16px"></div>
+
+  <div class="section-title">📋 Carica analisi del sangue</div>
+  <div class="card" style="margin-bottom:12px">
+    <div style="font-size:14px;color:#555;margin-bottom:12px;line-height:1.5">Scatta una foto al referto di laboratorio oppure allega il PDF. L'app leggerà i valori lipidici automaticamente (OCR).</div>
+
+    <label id="ocr-label" for="ocr-input" style="display:block;border:2px dashed #d0e8df;border-radius:12px;padding:28px 20px;text-align:center;cursor:pointer;transition:background .2s;background:#f9fdfb">
+      <div style="font-size:32px;margin-bottom:8px">📷</div>
+      <div style="font-size:14px;font-weight:600;color:#1d9e75;margin-bottom:4px">Tocca per caricare</div>
+      <div style="font-size:12px;color:#888">Foto referto · PDF analisi · JPG, PNG, PDF</div>
+    </label>
+    <input type="file" id="ocr-input" accept="image/*,.pdf" capture="environment" style="display:none" onchange="handleOCRUpload(this)">
+
+    <div id="ocr-preview" style="display:none;margin-top:12px">
+      <img id="ocr-img" style="width:100%;border-radius:8px;max-height:200px;object-fit:contain;background:#f5f5f0" alt="Anteprima referto">
+    </div>
+
+    <div id="ocr-result" style="display:none;margin-top:12px;background:#f9fdfb;border-radius:10px;padding:14px;border:1px solid #d0e8df">
+      <div style="font-size:13px;font-weight:600;color:#0f6e56;margin-bottom:10px">✅ Valori rilevati — conferma per salvare:</div>
+      <div id="ocr-fields"></div>
+      <button onclick="saveOCRValues()" style="background:#1d9e75;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;cursor:pointer;font-weight:600;width:100%;margin-top:10px">Salva valori</button>
+    </div>
+
+    <div id="ocr-status" style="display:none;margin-top:10px;font-size:13px;color:#888;text-align:center">⏳ Lettura in corso…</div>
+  </div>
+</div>
+
+<!-- DELETE DIALOG -->
+<div id="delete-dialog" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;padding:24px">
+  <div style="background:#fff;border-radius:16px;padding:24px;width:100%;max-width:340px;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+    <div style="font-size:17px;font-weight:600;margin-bottom:8px">Elimina pasto</div>
+    <div style="font-size:14px;color:#555;margin-bottom:20px">Vuoi eliminare <strong id="delete-name"></strong>?</div>
+    <div style="display:flex;gap:10px">
+      <button onclick="cancelDelete()" style="flex:1;background:#f0f0ea;border:none;border-radius:10px;padding:12px;font-size:14px;cursor:pointer;font-weight:600">Annulla</button>
+      <button onclick="confirmDelete()" style="flex:1;background:#e24b4a;color:#fff;border:none;border-radius:10px;padding:12px;font-size:14px;cursor:pointer;font-weight:600">Elimina</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal" id="meal-modal">
+  <div class="modal-box">
+    <button class="close-btn" onclick="closeModal()">Chiudi</button>
+    <div class="modal-title">Aggiungi alimento</div>
+    <input class="food-search" type="text" placeholder="Cerca... es. tonno, avocado, ceci" id="food-search" oninput="filterFood(this.value)">
+    <button class="online-search-btn" id="online-btn" onclick="searchOnline()">🌐 Cerca su Open Food Facts</button>
+    <div class="filter-pills" id="filter-pills"></div>
+    <div id="recipe-results"></div>
+    <div id="food-results"></div>
+    <div id="online-results"></div>
+  </div>
+</div>
+
+<script>
+// ===================== RICETTE =====================
+let RECIPES = [
+  {name:'Uova in purgatorio',icon:'🍳',ingredients:['Uova (2)','Pomodori freschi','Olio EVO (cucchiaio)'],ldlImpact:-2,score:'A',desc:'Uova + licopene + monoinsaturi'},
+  {name:'Pasta al tonno e pomodoro',icon:'🍝',ingredients:['Pasta al pomodoro','Tonno al naturale','Olio EVO (cucchiaio)'],ldlImpact:-4,score:'A+',desc:'Omega-3 + licopene + carboidrati'},
+  {name:'Zuppa di fagioli e verdure',icon:'🥣',ingredients:['Fagioli borlotti','Pomodori freschi','Cipolla rossa','Olio EVO (cucchiaio)'],ldlImpact:-8,score:'A+',desc:'Fibre solubili massime'},
+  {name:'Insalata di ceci e tonno',icon:'🥗',ingredients:['Ceci','Tonno al naturale','Pomodori freschi','Olio EVO (cucchiaio)'],ldlImpact:-7,score:'A+',desc:'Fibre + omega-3 + fitosteroli'},
+  {name:'Avena con noci e banana',icon:'🥣',ingredients:["Fiocchi d'avena",'Noci','Banana'],ldlImpact:-8,score:'A+',desc:'Beta-glucani + omega-3, colazione ideale'},
+  {name:'Sgombro con fagiolini',icon:'🐟',ingredients:['Sgombro','Fagiolini','Olio EVO (cucchiaio)'],ldlImpact:-7,score:'A+',desc:'Omega-3 concentrati + fibre'},
+  {name:'Pollo con verdure grigliate',icon:'🍗',ingredients:['Pollo senza pelle','Zucchine','Peperoni','Olio EVO (cucchiaio)'],ldlImpact:-3,score:'A+',desc:'Proteine magre + antiossidanti'},
+  {name:'Bigoli con le sarde',icon:'🍝',ingredients:['Bigoli con sarde','Olio EVO (cucchiaio)','Aglio'],ldlImpact:-7,score:'A+',desc:'Tradizione veneta ricca di omega-3'},
+  {name:'Bruschetta con avocado',icon:'🥑',ingredients:['Pane di segale','Avocado','Pomodori freschi'],ldlImpact:-5,score:'A+',desc:'Monoinsaturi + fibre + licopene'},
+  {name:'Lenticchie con soffritto',icon:'🥘',ingredients:['Lenticchie','Cipolla rossa','Pomodori freschi','Olio EVO (cucchiaio)'],ldlImpact:-7,score:'A+',desc:'Proteine vegetali + fibre solubili'},
+];
+
+// ===================== DATABASE ALIMENTI =====================
+const FOODS = [
+  // PESCE
+  {name:'Acciughe sott\'olio',cat:'Pesce',omega3:2.1,fibre:0,saturi:1.2,ldlImpact:-4,score:'A+',desc:'Omega-3 concentrati, ottimi per LDL'},
+  {name:'Tonno al naturale',cat:'Pesce',omega3:1.2,fibre:0,saturi:0.4,ldlImpact:-3,score:'A+',desc:'Omega-3 + proteine magre'},
+  {name:'Sgombro',cat:'Pesce',omega3:2.5,fibre:0,saturi:3.2,ldlImpact:-4,score:'A+',desc:'Tra i pesci più ricchi di omega-3'},
+  {name:'Salmone selvaggio',cat:'Pesce',omega3:2.8,fibre:0,saturi:3.5,ldlImpact:-4,score:'A+',desc:'Omega-3 + vitamina D'},
+  {name:'Branzino alla griglia',cat:'Pesce',omega3:1.1,fibre:0,saturi:0.9,ldlImpact:-3,score:'A+',desc:'Pesce magro, ottima cottura'},
+  {name:'Trota salmonata',cat:'Pesce',omega3:1.8,fibre:0,saturi:2.1,ldlImpact:-3,score:'A+',desc:'Ricca di omega-3'},
+  {name:'Sardine',cat:'Pesce',omega3:1.9,fibre:0,saturi:1.5,ldlImpact:-4,score:'A+',desc:'Economiche e potenti'},
+  // LEGUMI
+  {name:'Fagioli borlotti',cat:'Legumi',omega3:0,fibre:8.5,saturi:0.1,ldlImpact:-5,score:'A+',desc:'Fibre solubili — i migliori per LDL'},
+  {name:'Ceci',cat:'Legumi',omega3:0,fibre:7.6,saturi:0.3,ldlImpact:-4,score:'A+',desc:'Fibre + steroli vegetali'},
+  {name:'Lenticchie',cat:'Legumi',omega3:0,fibre:8.0,saturi:0.2,ldlImpact:-4,score:'A+',desc:'Proteine + fibre solubili'},
+  {name:'Piselli',cat:'Legumi',omega3:0,fibre:5.5,saturi:0.1,ldlImpact:-3,score:'A+',desc:'Leggeri e ricchi di fibre'},
+  // FRUTTA SECCA
+  {name:'Noci',cat:'Frutta secca',omega3:2.6,fibre:2.0,saturi:6.1,ldlImpact:-4,score:'A+',desc:'Le migliori per omega-3'},
+  {name:'Pistacchi non salati',cat:'Frutta secca',omega3:0.1,fibre:3.0,saturi:5.6,ldlImpact:-4,score:'A+',desc:'Fitosteroli — abbassano LDL'},
+  {name:'Mandorle',cat:'Frutta secca',omega3:0,fibre:3.5,saturi:3.8,ldlImpact:-3,score:'A+',desc:'Vitamina E + monoinsaturi'},
+  {name:'Arachidi non salate',cat:'Frutta secca',omega3:0,fibre:2.4,saturi:6.8,ldlImpact:-2,score:'A',desc:'Proteine + grassi buoni'},
+  // VERDURE
+  {name:'Carciofi',cat:'Verdure',omega3:0,fibre:5.4,saturi:0,ldlImpact:-4,score:'A+',desc:'Cinarina → abbassa LDL direttamente'},
+  {name:'Spinaci',cat:'Verdure',omega3:0.1,fibre:2.6,saturi:0,ldlImpact:-2,score:'A+',desc:'Ferro + antiossidanti'},
+  {name:'Erbette di campo',cat:'Verdure',omega3:0,fibre:3.2,saturi:0,ldlImpact:-2,score:'A+',desc:'Depurative, antiossidanti'},
+  {name:'Melanzane',cat:'Verdure',omega3:0,fibre:3.0,saturi:0,ldlImpact:-2,score:'A+',desc:'Nasunina, potente antiossidante'},
+  {name:'Peperoni',cat:'Verdure',omega3:0,fibre:2.1,saturi:0,ldlImpact:-1,score:'A+',desc:'Vitamina C altissima'},
+  {name:'Zucchine',cat:'Verdure',omega3:0,fibre:1.1,saturi:0,ldlImpact:-1,score:'A+',desc:'Leggerissime, ottime'},
+  {name:'Pomodori freschi',cat:'Verdure',omega3:0,fibre:1.2,saturi:0,ldlImpact:-1,score:'A+',desc:'Licopene → antiossidante'},
+  {name:'Fagiolini',cat:'Verdure',omega3:0,fibre:3.4,saturi:0,ldlImpact:-2,score:'A+',desc:'Fibre + vitamina C'},
+  {name:'Cipolla rossa',cat:'Verdure',omega3:0,fibre:1.7,saturi:0,ldlImpact:-2,score:'A+',desc:'Quercetina → antinfiammatoria'},
+  // FRUTTA
+  {name:'Mela Fuji',cat:'Frutta',omega3:0,fibre:2.4,saturi:0,ldlImpact:-2,score:'A+',desc:'Pectina → abbassa LDL'},
+  {name:'Prugne',cat:'Frutta',omega3:0,fibre:1.4,saturi:0,ldlImpact:-2,score:'A+',desc:'Pectina + antiossidanti'},
+  {name:'Avocado',cat:'Frutta',omega3:0.1,fibre:6.7,saturi:2.1,ldlImpact:-3,score:'A+',desc:'Monoinsaturi + fibre'},
+  {name:'Albicocche',cat:'Frutta',omega3:0,fibre:2.0,saturi:0,ldlImpact:-1,score:'A+',desc:'Betacarotene + fibre'},
+  {name:'Banana',cat:'Frutta',omega3:0,fibre:2.6,saturi:0.1,ldlImpact:0,score:'A',desc:'Potassio + energia'},
+  {name:'Melograno',cat:'Frutta',omega3:0,fibre:4.0,saturi:0,ldlImpact:-3,score:'A+',desc:'Punicalagin — antiossidante potentissimo'},
+  // CEREALI
+  {name:'Fiocchi d\'avena',cat:'Cereali',omega3:0.1,fibre:10.6,saturi:1.4,ldlImpact:-5,score:'A+',desc:'Beta-glucani → i migliori per LDL'},
+  {name:'Pane di segale',cat:'Cereali',omega3:0,fibre:6.2,saturi:0.5,ldlImpact:-2,score:'A+',desc:'Fibre solubili abbondanti'},
+  {name:'Pasta integrale',cat:'Cereali',omega3:0,fibre:3.9,saturi:0.3,ldlImpact:-1,score:'A',desc:'Indice glicemico più basso'},
+  {name:'Pasta al pomodoro',cat:'Cereali',omega3:0,fibre:1.5,saturi:0.2,ldlImpact:0,score:'A',desc:'Licopene + carboidrati'},
+  {name:'Bigoli con sarde',cat:'Cereali',omega3:1.8,fibre:3.5,saturi:1.2,ldlImpact:-4,score:'A+',desc:'Pasta integrale + omega-3'},
+  // CONDIMENTI
+  {name:'Olio EVO (cucchiaio)',cat:'Condimenti',omega3:0.1,fibre:0,saturi:1.9,ldlImpact:-2,score:'A+',desc:'Monoinsaturi +++'},
+  {name:'Aglio',cat:'Condimenti',omega3:0,fibre:2.1,saturi:0,ldlImpact:-2,score:'A+',desc:'Alliina → abbassa LDL'},
+  {name:'Aceto di mele',cat:'Condimenti',omega3:0,fibre:0,saturi:0,ldlImpact:-1,score:'A+',desc:'Glicemia + modesto effetto LDL'},
+  // PROTEINE
+  {name:'Pollo senza pelle',cat:'Proteine',omega3:0.1,fibre:0,saturi:1.1,ldlImpact:0,score:'A',desc:'Carne magra ideale'},
+  {name:'Coniglio',cat:'Proteine',omega3:0.2,fibre:0,saturi:1.3,ldlImpact:0,score:'A+',desc:'La carne più magra'},
+  {name:'Vitello',cat:'Proteine',omega3:0.1,fibre:0,saturi:1.8,ldlImpact:+1,score:'A',desc:'Magro, ottimo alla griglia'},
+  {name:'Uova (2)',cat:'Proteine',omega3:0.3,fibre:0,saturi:3.1,ldlImpact:+1,score:'B',desc:'B12 + proteine, max 3/sett.'},
+  {name:'Bresaola',cat:'Proteine',omega3:0,fibre:0,saturi:0.8,ldlImpact:0,score:'A',desc:'Carne magra, attenzione sodio'},
+  // LATTICINI
+  {name:'Yogurt Herakles 0%',cat:'Latticini',omega3:0,fibre:0,saturi:0.2,ldlImpact:0,score:'A+',desc:'Proteine alte, saturi zero'},
+  {name:'Ricotta fresca',cat:'Latticini',omega3:0,fibre:0,saturi:3.2,ldlImpact:+1,score:'B',desc:'Formaggio più leggero'},
+  {name:'Mozzarella vaccina',cat:'Latticini',omega3:0,fibre:0,saturi:5.0,ldlImpact:+2,score:'B',desc:'Moderata, non quotidiana'},
+  {name:'Mozzarella di bufala',cat:'Latticini',omega3:0,fibre:0,saturi:7.1,ldlImpact:+3,score:'B',desc:'Più saporita ma più saturi'},
+  {name:'Grana Padano (10g)',cat:'Latticini',omega3:0,fibre:0,saturi:1.8,ldlImpact:+2,score:'B',desc:'Piccola quantità ok'},
+  {name:'Gorgonzola',cat:'Latticini',omega3:0,fibre:0,saturi:11.0,ldlImpact:+5,score:'C',desc:'Saturi elevati, raramente'},
+  // SALUMI
+  {name:'Pancetta (4 fette)',cat:'Salumi',omega3:0,fibre:0,saturi:8.5,ldlImpact:+5,score:'C',desc:'Saturi alti + sodio'},
+  {name:'Salame (3 fette)',cat:'Salumi',omega3:0,fibre:0,saturi:7.2,ldlImpact:+4,score:'C',desc:'Evita o raramente'},
+  {name:'Prosciutto cotto (2 fette)',cat:'Salumi',omega3:0,fibre:0,saturi:1.5,ldlImpact:+1,score:'B',desc:'Il meno peggio'},
+  {name:'Speck (2 fette)',cat:'Salumi',omega3:0,fibre:0,saturi:4.1,ldlImpact:+3,score:'C',desc:'Sodio elevato'},
+];
+
+const CATS = [...new Set(FOODS.map(f=>f.cat))];
+
+// ===================== STATO GIORNALIERO =====================
+let todayMeals = [
+  {name:'Colazione — avena, latte, noci, pistacchi',score:'A+',ldlImpact:-6,time:'07:00'},
+];
+let bpData = [];
+
+// ===================== MOTORE SUGGERIMENTI =====================
+function computeSuggestion() {
+  const history = {
+    omega3Days: [1.8, 0.3, 2.1],
+    fibreTotal: [22, 18, 25],
+    saturi: [8, 14, 7],
+    hasFish: [true, false, true],
+    hasLegumes: [true, false, true],
+    hasActivity: [true, false, true],
+    avgLDLImpact: todayMeals.reduce((s,m)=>s+(m.ldlImpact||0),0),
+  };
+
+  const avgOmega3 = history.omega3Days.reduce((a,b)=>a+b,0)/3;
+  const avgSaturi = history.saturi.reduce((a,b)=>a+b,0)/3;
+  const avgFibre = history.fibreTotal.reduce((a,b)=>a+b,0)/3;
+  const noFishYesterday = !history.hasFish[1];
+  const noLegumesYesterday = !history.hasLegumes[1];
+
+  const suggestions = [];
+
+  if(noFishYesterday && avgOmega3 < 1.5) {
+    suggestions.push({
+      type:'verde',icon:'🐟',title:'Aggiungi omega-3 oggi',
+      text:'Ieri niente pesce o acciughe. Punta su tonno, sgombro o acciughe a pranzo per compensare.',
+      reasons:['Omega-3 medi ultimi 3 giorni: '+avgOmega3.toFixed(1)+'g (target >1.5g)','Ieri nessuna fonte di pesce nel diario'],
+    });
+  }
+  if(noLegumesYesterday) {
+    suggestions.push({
+      type:'verde',icon:'🫘',title:'Giornata ideale per i legumi',
+      text:'Niente legumi ieri. Fagioli o ceci a cena sono la mossa migliore per le fibre solubili.',
+      reasons:['Legumi non rilevati ieri','Media fibre ultime 3 gg: '+avgFibre.toFixed(0)+'g'],
+    });
+  }
+  if(avgSaturi > 10) {
+    suggestions.push({
+      type:'arancio',icon:'⚠️',title:'Attenzione ai grassi saturi oggi',
+      text:'Media saturi ultimi 3 giorni sopra la soglia. Oggi prediligi pesce, legumi e verdure.',
+      reasons:['Media saturi: '+avgSaturi.toFixed(0)+'g/giorno (soglia: <10g)','Ieri: formaggi o salumi rilevati'],
+    });
+  }
+  if(!history.hasActivity[0] && !history.hasActivity[1]) {
+    suggestions.push({
+      type:'blu',icon:'🏃',title:'Oggi buon momento per muoversi',
+      text:'Due giorni di riposo consecutivi. Una camminata o 30 min di tapis roulant farebbe bene all\'HDL.',
+      reasons:['Nessuna attività registrata ieri','L\'esercizio aerobico alza HDL e abbassa trigliceridi'],
+    });
+  }
+  if(!suggestions.length) {
+    suggestions.push({
+      type:'verde',icon:'✅',title:'Ottima traiettoria!',
+      text:'Stai seguendo bene l\'alimentazione. Continua con pesce o legumi a pranzo e verdure abbondanti.',
+      reasons:['Omega-3 nella norma negli ultimi 3 giorni','Fibre solubili adeguate'],
+    });
+  }
+  return suggestions[0];
+}
+
+function renderCoach() {
+  const s = computeSuggestion();
+  document.getElementById('coach-container').innerHTML = `
+    <div class="coach-box ${s.type}">
+      <div class="coach-label">💡 Consiglio del giorno</div>
+      <div class="coach-text">${s.icon} ${s.title}</div>
+      <div class="coach-sub">${s.text}</div>
+      <div class="coach-reasons">
+        ${s.reasons.map(r=>`<div class="coach-reason"><span>→</span><span>${r}</span></div>`).join('')}
+      </div>
+    </div>`;
+}
+
+// ===================== PUNTEGGIO GIORNALIERO =====================
+function computeDailyScore() {
+  const total = todayMeals.reduce((s,m)=>s+(m.ldlImpact||0),0);
+  const aPlus = todayMeals.filter(m=>m.score==='A+').length;
+  const perc = Math.min(100, Math.max(0, 100 + total*5));
+
+  let label, color, bg;
+  if(perc>=80){label='Ottima giornata!';color='#0f6e56';bg='#e1f5ee';}
+  else if(perc>=60){label='Buona giornata';color='#854f0b';bg='#faeeda';}
+  else{label='Giornata da migliorare';color='#a32d2d';bg='#fcebeb';}
+
+  document.getElementById('daily-score-wrap').innerHTML = `
+    <div class="daily-score" style="border-left:4px solid ${color}">
+      <div class="daily-score-circle" style="background:${bg};color:${color}">${Math.round(perc)}</div>
+      <div>
+        <div style="font-size:14px;font-weight:600;color:${color}">${label}</div>
+        <div class="daily-score-text">Impatto LDL oggi: ${total>0?'+':''}${total} punti · ${aPlus} pasti eccellenti</div>
+      </div>
+    </div>`;
+}
+
+// ===================== DIARIO =====================
+function renderMeals() {
+  const list = document.getElementById('meal-list');
+  if(!todayMeals.length){
+    list.innerHTML='<div style="color:#888;font-size:14px;text-align:center;padding:24px">Nessun pasto registrato.<br>Aggiungi il primo! 👆</div>';
+    computeDailyScore(); renderCoach(); return;
+  }
+  list.innerHTML = todayMeals.map((m,i)=>{
+    const cls = m.score==='A+'||m.score==='A'?'score-a':m.score==='B'?'score-b':'score-c';
+    const sign = m.ldlImpact>0?'+':'';
+    return `<div class="meal-item">
+      <div class="meal-row">
+        <div style="flex:1">
+          <div class="meal-name">${m.name}</div>
+          <div class="meal-time">${m.time} · LDL: ${sign}${m.ldlImpact}</div>
+        </div>
+        <span class="meal-score ${cls}" style="margin-right:8px">${m.score}</span>
+        <button class="meal-delete" onclick="deleteMeal(${i})" title="Elimina">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+  computeDailyScore();
+  renderCoach();
+}
+
+// Dialog custom per cancellazione (confirm() bloccato negli iframe)
+let pendingDelete = null;
+function deleteMeal(i){
+  pendingDelete = i;
+  document.getElementById('delete-name').textContent = todayMeals[i].name;
+  document.getElementById('delete-dialog').style.display='flex';
+}
+function confirmDelete(){
+  if(pendingDelete!==null){ todayMeals.splice(pendingDelete,1); pendingDelete=null; }
+  document.getElementById('delete-dialog').style.display='none';
+  renderMeals();
+}
+function cancelDelete(){
+  pendingDelete=null;
+  document.getElementById('delete-dialog').style.display='none';
+}
+
+function quickAdd(name,score,desc) {
+  const now = new Date();
+  const t = now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
+  const f = FOODS.find(x=>x.name.includes(name.split(' ')[0]));
+  const ldl = f ? f.ldlImpact : 0;
+  todayMeals.unshift({name,score,ldlImpact:ldl,time:t});
+  renderMeals();
+}
+
+function openModal() {
+  document.getElementById('meal-modal').classList.add('open');
+  document.getElementById('food-search').value='';
+  renderPills('Tutti');
+  filterFood('');
+}
+function closeModal(){document.getElementById('meal-modal').classList.remove('open')}
+
+let activecat='Tutti';
+function renderPills(active) {
+  activecat = active;
+  const cats=['Tutti','🍳 Ricette',...CATS];
+  document.getElementById('filter-pills').innerHTML = cats.map(c=>
+    `<span class="pill ${c===active?'active':''}" onclick="renderPills('${c}');filterFood(document.getElementById('food-search').value)">${c}</span>`
+  ).join('');
+}
+
+function filterFood(q) {
+  document.getElementById('online-results').innerHTML='';
+  document.getElementById('online-btn').innerHTML='🌐 Cerca su Open Food Facts';
+  document.getElementById('online-btn').disabled=false;
+  const ql=q.toLowerCase();
+  let recipeList=RECIPES;
+  if(activecat!=='Tutti'&&activecat!=='🍳 Ricette') recipeList=[];
+  if(q) recipeList=recipeList.filter(r=>r.name.toLowerCase().includes(ql)||r.desc.toLowerCase().includes(ql)||r.ingredients.some(i=>i.toLowerCase().includes(ql)));
+  const recipeHtml=recipeList.length?`
+    <div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.4px;margin:8px 0 6px">🍳 Ricette</div>
+    ${recipeList.map(r=>{
+      const cls=r.score==='A+'||r.score==='A'?'score-a':r.score==='B'?'score-b':'score-c';
+      const sign=r.ldlImpact>0?'+':'';
+      return `<div class="food-option" onclick="selectRecipe('${r.name.replace(/'/g,"\\'")}','${r.score}',${r.ldlImpact})">
+        <div style="flex:1">
+          <div class="food-option-name">${r.icon} ${r.name}</div>
+          <div class="food-option-detail" style="font-size:11px">${r.ingredients.join(' · ')}</div>
+          <div class="food-option-detail">${r.desc}</div>
+        </div>
+        <div class="food-option-impact">
+          <div class="meal-score ${cls}" style="margin-bottom:4px">${r.score}</div>
+          <div class="food-impact-ldl ${r.ldlImpact<0?'good':r.ldlImpact>0?'bad':'neutral'}">LDL ${sign}${r.ldlImpact}</div>
+        </div>
+      </div>`;
+    }).join('')}
+  `:'';
+  document.getElementById('recipe-results').innerHTML=recipeHtml;
+  let list=FOODS;
+  if(activecat==='🍳 Ricette') list=[];
+  else if(activecat!=='Tutti') list=list.filter(f=>f.cat===activecat);
+  if(q) list=list.filter(f=>f.name.toLowerCase().includes(ql)||f.desc.toLowerCase().includes(ql));
+  const foodHeader=list.length&&recipeList.length?`<div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.4px;margin:12px 0 6px">🥦 Alimenti</div>`:'';
+  const html=list.map(f=>{
+    const cls=f.score==='A+'||f.score==='A'?'score-a':f.score==='B'?'score-b':'score-c';
+    const impCls=f.ldlImpact<0?'good':f.ldlImpact>0?'bad':'neutral';
+    const sign=f.ldlImpact>0?'+':'';
+    return `<div class="food-option" onclick="selectFood('${f.name.replace(/'/g,"\\'")}','${f.score}',${f.ldlImpact})">
+      <div>
+        <div class="food-option-name">${f.name}</div>
+        <div class="food-option-detail">${f.cat} · ${f.desc}</div>
+      </div>
+      <div class="food-option-impact">
+        <div class="meal-score ${cls}" style="margin-bottom:4px">${f.score}</div>
+        <div class="food-impact-ldl ${impCls}">LDL ${sign}${f.ldlImpact}</div>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('food-results').innerHTML=(list.length||recipeList.length)?foodHeader+html:'<div style="color:#888;padding:20px;text-align:center">Nessun risultato</div>';
+}
+
+function selectRecipe(name,score,ldl){
+  const now=new Date();
+  const t=now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
+  todayMeals.unshift({name,score,ldlImpact:parseInt(ldl),time:t});
+  closeModal();
+  renderMeals();
+}
+
+function selectFood(name,score,ldl) {
+  const now = new Date();
+  const t = now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
+  todayMeals.unshift({name,score,ldlImpact:ldl,time:t});
+  closeModal();
+  renderMeals();
+}
+
+// ===================== OPEN FOOD FACTS (sample) =====================
+let sampleFn = null;
+let sampleUnavailable = false;
+let lastOnlineResults = [];
+
+async function getSample() {
+  if(sampleUnavailable) return null;
+  if(sampleFn) return sampleFn;
+  try {
+    sampleFn = await window.claude.use('sample');
+    if(!sampleFn) sampleUnavailable = true;
+    return sampleFn;
+  } catch(e) {
+    sampleUnavailable = true;
+    return null;
+  }
+}
+
+async function searchOnline() {
+  const q = document.getElementById('food-search').value.trim();
+  if(!q) {
+    document.getElementById('food-search').focus();
+    return;
+  }
+  const btn = document.getElementById('online-btn');
+  const out = document.getElementById('online-results');
+
+  const sample = await getSample();
+  if(!sample) {
+    out.innerHTML = '<div class="online-status">⚠️ Ricerca online non disponibile in questa sessione</div>';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Ricerca in corso…';
+  out.innerHTML = '<div class="online-status">🌐 Cerco su Open Food Facts…</div>';
+
+  const prompt = `Sei un nutrizionista esperto in cardiologia. Cerca il prodotto alimentare "${q}" su Open Food Facts (openfoodfacts.org).
+
+Rispondi SOLO con un array JSON (nessun testo fuori dal JSON) di massimo 5 risultati con questo schema:
+[{"name":"Nome prodotto in italiano","brand":"Marca o vuoto","cat":"Categoria (es. Cereali, Pesce, Verdure, Frutta, Legumi, Latticini, Proteine, Condimenti, Altro)","kcal":0,"fat_sat":0.0,"fiber":0.0,"omega3":0.0,"ldlImpact":0,"score":"A+","desc":"Beneficio o avvertenza per il colesterolo LDL in 6-8 parole"}]
+
+Regole per ldlImpact (variazione LDL in mg/dL per porzione tipica):
+- Alimenti ricchi di fibre solubili (avena, legumi, frutta): da -3 a -8
+- Pesce grasso (omega-3): da -3 a -5
+- Verdure, frutta fresca: da -1 a -3
+- Olio EVO, frutta secca: da -2 a -4
+- Carne magra, pesce magro: 0
+- Uova: +1 a +2
+- Formaggi, latticini interi: +2 a +5
+- Salumi, carni grasse: +3 a +6
+- Prodotti ultra-processati, zuccheri: +1 a +4
+
+Score: A+ se ldlImpact <=-2, A se -1 o 0, B se 1-2, C se >=3`;
+
+  try {
+    const results = await sample.json(prompt, {modelTier: 'quick', cache: {gcTime: 300000}});
+    if(!Array.isArray(results) || !results.length) throw new Error('empty');
+    lastOnlineResults = results;
+
+    const html = `
+      <div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.4px;margin:4px 0 8px">🌐 Open Food Facts — "${q}"</div>
+      ${results.map(r => {
+        const cls = r.score==='A+'||r.score==='A' ? 'score-a' : r.score==='B' ? 'score-b' : 'score-c';
+        const impCls = r.ldlImpact<0 ? 'good' : r.ldlImpact>0 ? 'bad' : 'neutral';
+        const sign = r.ldlImpact>0 ? '+' : '';
+        const nameEsc = r.name.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+        const alreadySaved = FOODS.some(f=>f.name.toLowerCase()===r.name.toLowerCase());
+        const idx = results.indexOf(r);
+        return `<div class="food-option" style="flex-direction:column;align-items:stretch;gap:8px;padding-bottom:10px">
+          <div style="display:flex;align-items:center">
+            <div style="flex:1">
+              <div class="food-option-name">${r.name}${r.brand?' <span style="color:#aaa;font-size:11px">('+r.brand+')</span>':''}</div>
+              <div class="food-option-detail">${r.cat}${r.kcal?' · '+r.kcal+' kcal':''} · ${r.desc}</div>
+            </div>
+            <div class="food-option-impact">
+              <div class="meal-score ${cls}" style="margin-bottom:4px">${r.score}</div>
+              <div class="food-impact-ldl ${impCls}">LDL ${sign}${r.ldlImpact}</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button onclick="selectFood('${nameEsc}','${r.score}',${r.ldlImpact})" style="flex:1;background:#1d9e75;color:#fff;border:none;border-radius:8px;padding:8px;font-size:13px;font-weight:600;cursor:pointer">+ Aggiungi al diario</button>
+            <button id="save-btn-${idx}" onclick="saveOnlineFood(${idx},this)" style="background:${alreadySaved?'#e1f5ee':'#f0f0ea'};border:none;border-radius:8px;padding:8px 12px;font-size:13px;font-weight:600;cursor:pointer;color:${alreadySaved?'#0f6e56':'#555'}" ${alreadySaved?'disabled':''} title="${alreadySaved?'Gia nel database':'Salva nel database locale'}">${alreadySaved?'✅ Salvato':'💾 Salva'}</button>
+          </div>
+        </div>`;
+      }).join('')}`;
+
+    out.innerHTML = html;
+    btn.innerHTML = '✅ ' + results.length + ' risultat' + (results.length===1?'o':'i') + ' trovati';
+  } catch(e) {
+    const code = e?.code;
+    if(code==='not_granted'||code==='sampling_disabled'||code==='capability_disabled') {
+      sampleUnavailable = true;
+      out.innerHTML = '<div class="online-status">Ricerca online non autorizzata — usa il database locale</div>';
+      btn.style.display = 'none';
+    } else if(code==='rate_limited') {
+      out.innerHTML = '<div class="online-status">⏳ Troppe richieste, riprova tra qualche secondo</div>';
+      btn.innerHTML = '🌐 Cerca su Open Food Facts';
+    } else {
+      out.innerHTML = '<div class="online-status">⚠️ Nessun risultato trovato per "'+q+'"</div>';
+      btn.innerHTML = '🌐 Cerca su Open Food Facts';
+    }
+  } finally {
+    btn.disabled = false;
+    if(btn.innerHTML.startsWith('✅')) {
+      setTimeout(()=>{btn.innerHTML='🌐 Cerca su Open Food Facts';},3000);
+    }
+  }
+}
+
+// Salva un alimento trovato online nel database locale FOODS
+function saveOnlineFood(idx, btn) {
+  const food = lastOnlineResults[idx];
+  if(!food || FOODS.some(f=>f.name.toLowerCase()===food.name.toLowerCase())) return;
+  FOODS.push({
+    name: food.name,
+    cat: food.cat || 'Altro',
+    omega3: food.omega3 || 0,
+    fibre: food.fiber || 0,
+    saturi: food.fat_sat || 0,
+    ldlImpact: food.ldlImpact || 0,
+    score: food.score || 'A',
+    desc: food.desc || ''
+  });
+  // Aggiorna la lista delle categorie
+  if(!CATS.includes(food.cat)) CATS.push(food.cat);
+  btn.textContent = '✅ Salvato';
+  btn.disabled = true;
+  btn.style.background = '#e1f5ee';
+  btn.style.color = '#0f6e56';
+}
+
+// ===================== PRESSIONE =====================
+let bpList=[];
+function addBP(){
+  const sEl=document.getElementById('sys');
+  const dEl=document.getElementById('dia');
+  const hrEl=document.getElementById('hr');
+  const s=parseInt(sEl.value);
+  const d=parseInt(dEl.value);
+  const hr=parseInt(hrEl.value)||null;
+  if(!s||!d||s<80||s>200||d<50||d>130){
+    sEl.style.borderColor='#e24b4a';
+    dEl.style.borderColor='#e24b4a';
+    setTimeout(()=>{sEl.style.borderColor='#ddd';dEl.style.borderColor='#ddd';},1500);
+    return;
+  }
+  const now=new Date();
+  bpList.unshift({s,d,hr,date:now.toLocaleDateString('it-IT'),time:now.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})});
+  sEl.value=''; dEl.value=''; hrEl.value='';
+  renderBPList();
+}
+
+function renderBPList(){
+  if(!bpList.length){
+    document.getElementById('bp-list').innerHTML='<div style="color:#888;font-size:14px;text-align:center;padding:20px">Nessuna misurazione ancora</div>';
+    return;
+  }
+  document.getElementById('bp-list').innerHTML=bpList.map((b,i)=>{
+    const prev=bpList[i+1];
+    const trend=!prev?'':b.s<prev.s?'<span style="color:#1d9e75;font-size:18px">↓</span>':b.s>prev.s?'<span style="color:#e24b4a;font-size:18px">↑</span>':'<span style="color:#888;font-size:18px">=</span>';
+    const isHigh=b.s>140||b.d>90;
+    const isOpt=b.s<120&&b.d<80;
+    const valColor=isHigh?'#e24b4a':isOpt?'#1d9e75':'#ba7517';
+    const statusLabel=isHigh?'Alta':isOpt?'Ottimale':'Normale';
+    return`<div class="pressure-item" style="flex-direction:column;align-items:stretch;gap:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <span style="font-size:22px;font-weight:700;color:${valColor}">${b.s}/${b.d}</span>
+          <span style="font-size:12px;color:#888;margin-left:4px">mmHg</span>
+          ${b.hr?`<span style="font-size:13px;color:#888;margin-left:12px">❤️ ${b.hr} bpm</span>`:''}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:12px;font-weight:600;padding:3px 8px;border-radius:99px;background:${isHigh?'#fcebeb':isOpt?'#e1f5ee':'#faeeda'};color:${valColor}">${statusLabel}</span>
+          ${trend}
+        </div>
+      </div>
+      <div style="font-size:12px;color:#888">${b.date} · ${b.time}</div>
+    </div>`;
+  }).join('');
+}
+
+// ===================== PESO =====================
+let weightLog = [
+  {kg:101.5, date:'28/01/2026'},{kg:100.5, date:'05/02/2026'},
+  {kg:101.5, date:'01/07/2026'},{kg:100.2, date:'10/07/2026'},
+  {kg:99.2,  date:'18/07/2026'},{kg:98.8,  date:'28/07/2026'},
+  {kg:98.3,  date:'16/08/2026'},{kg:97.5,  date:'03/09/2026'},
+  {kg:97.6,  date:'09/09/2026'},
+];
+
+function addWeight(){
+  const kg = parseFloat(document.getElementById('wt-kg').value);
+  const dt = document.getElementById('wt-date').value;
+  if(!kg||kg<40||kg>250) return;
+  const label = dt ? new Date(dt).toLocaleDateString('it-IT') : new Date().toLocaleDateString('it-IT');
+  weightLog.push({kg, date:label});
+  weightLog.sort((a,b)=>a.date.split('/').reverse().join('').localeCompare(b.date.split('/').reverse().join('')));
+  document.getElementById('wt-kg').value='';
+  document.getElementById('wt-date').value='';
+  updateWeightChart();
+  renderWeightList();
+}
+
+function renderWeightList(){
+  const last5 = [...weightLog].reverse().slice(0,5);
+  document.getElementById('weight-list').innerHTML = last5.map((w,i,arr)=>{
+    const prev = arr[i+1];
+    const diff = prev ? (w.kg - prev.kg).toFixed(1) : null;
+    const trendColor = diff && diff<0 ? '#1d9e75' : diff && diff>0 ? '#e24b4a' : '#888';
+    const trendStr = diff ? `<span style="color:${trendColor};font-weight:600">${diff>0?'+':''}${diff} kg</span>` : '';
+    return `<div class="pressure-item" style="margin-bottom:8px">
+      <div>
+        <div style="font-size:20px;font-weight:700;color:#185fa5">${w.kg} kg</div>
+        <div style="font-size:12px;color:#888">${w.date}</div>
+      </div>
+      <div>${trendStr}</div>
+    </div>`;
+  }).join('');
+}
+
+let weightChartInst = null;
+function updateWeightChart(){
+  if(weightChartInst) weightChartInst.destroy();
+  weightChartInst = new Chart(document.getElementById('weightChart'),{
+    type:'line',
+    data:{
+      labels: weightLog.map(w=>w.date),
+      datasets:[{
+        label:'Peso',data:weightLog.map(w=>w.kg),
+        borderColor:'#185fa5',backgroundColor:'rgba(24,95,165,0.08)',
+        borderWidth:2,pointRadius:4,tension:.3
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:'#888',maxTicksLimit:5},grid:{color:'rgba(0,0,0,0.05)'}},
+        y:{ticks:{color:'#888'},grid:{color:'rgba(0,0,0,0.05)'},min:94,max:104}
+      }
+    }
+  });
+}
+
+// ===================== GARMIN / SMARTWATCH =====================
+let garminLog = [
+  {type:'Tapis roulant',km:5.11,min:39,cal:481,hr:141,steps:null,date:'14/09/2026'},
+  {type:'Tapis roulant',km:5.55,min:45,cal:545,hr:138,steps:null,date:'16/09/2026'},
+  {type:'Tapis roulant',km:5.91,min:48,cal:570,hr:null,steps:null,date:'23/09/2026'},
+  {type:'Solo passi',km:null,min:null,cal:null,hr:null,steps:23332,date:'29/08/2026'},
+];
+
+function addGarmin(){
+  const km = parseFloat(document.getElementById('g-km').value)||0;
+  const min = parseInt(document.getElementById('g-min').value)||0;
+  const cal = parseInt(document.getElementById('g-cal').value)||0;
+  const hr = parseInt(document.getElementById('g-hr').value)||null;
+  const steps = parseInt(document.getElementById('g-steps').value)||null;
+  const type = document.getElementById('g-type').value;
+  if(!km&&!cal&&!steps) return;
+  const now = new Date();
+  garminLog.unshift({type,km,min,cal,hr,steps,date:now.toLocaleDateString('it-IT')});
+  document.getElementById('g-km').value='';
+  document.getElementById('g-min').value='';
+  document.getElementById('g-cal').value='';
+  document.getElementById('g-hr').value='';
+  document.getElementById('g-steps').value='';
+  renderGarmin();
+}
+
+function renderGarmin(){
+  document.getElementById('garmin-list').innerHTML = garminLog.map(a=>{
+    const hasSteps = a.steps && a.steps > 0;
+    const cols = hasSteps ? 5 : 4;
+    const stepsCol = hasSteps ? `<div><div style="font-size:16px;font-weight:700;color:#378add">${a.steps.toLocaleString('it-IT')}</div><div style="font-size:10px;color:#888">passi</div></div>` : '';
+    return `<div class="card" style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-size:14px;font-weight:600">🏃 ${a.type}</div>
+        <div style="font-size:12px;color:#888">${a.date}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:4px;text-align:center">
+        <div><div style="font-size:16px;font-weight:700;color:#1d9e75">${a.km||'—'}</div><div style="font-size:10px;color:#888">km</div></div>
+        <div><div style="font-size:16px;font-weight:700">${a.min?a.min+"'":'—'}</div><div style="font-size:10px;color:#888">durata</div></div>
+        <div><div style="font-size:16px;font-weight:700;color:#e24b4a">${a.cal||'—'}</div><div style="font-size:10px;color:#888">kcal</div></div>
+        <div><div style="font-size:16px;font-weight:700;color:#ba7517">${a.hr||'—'}</div><div style="font-size:10px;color:#888">bpm</div></div>
+        ${stepsCol}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ===================== EXPORT MEDICO =====================
+async function exportMedico(){
+  const btn = document.querySelector('[onclick="exportMedico()"]');
+  const orig = btn.innerHTML;
+
+  const downloads = await window.claude.use('downloads');
+  if(!downloads){
+    btn.innerHTML='⚠️ Download non disponibile';
+    setTimeout(()=>{btn.innerHTML=orig;},2000);
+    return;
+  }
+
+  const paziente = 'Andrea Brunelli';
+  const dataNascita = '01/03/1975';
+  const today = new Date().toLocaleDateString('it-IT');
+  const bom = '﻿';
+
+  // --- CSV Profilo Lipidico ---
+  const lipidiHeader = 'Paziente,Data nascita,Data analisi,LDL (mg/dL),HDL (mg/dL),Trigliceridi (mg/dL),Colesterolo totale (mg/dL),Glicemia (mg/dL),Note';
+  const lipidiRows = [
+    [paziente, dataNascita, 'lug-2026 (basale)', 145, 44, 66, '', '', 'Valore iniziale prima del percorso'],
+    [paziente, dataNascita, '30/07/2026', 109, 43, 91, '', '', 'Dopo 4 settimane di intervento dietetico'],
+  ];
+  const lipidiCSV = bom + [lipidiHeader, ...lipidiRows.map(r=>r.map(v=>`"${v}"`).join(','))].join('\n');
+
+  // --- CSV Pressione ---
+  const bpHeader = 'Paziente,Data nascita,Data,Ora,Sistolica (mmHg),Diastolica (mmHg),FC (bpm),Classificazione';
+  const bpRows = bpList.length ? bpList.map(b=>{
+    const cls = b.s>140||b.d>90?'Alta':b.s<120&&b.d<80?'Ottimale':'Normale';
+    return [paziente,dataNascita,b.date,b.time,b.s,b.d,b.hr||'',cls];
+  }) : [[paziente,dataNascita,'(nessuna misurazione)','','','','','']];
+  const bpCSV = bom + [bpHeader, ...bpRows.map(r=>r.map(v=>`"${v}"`).join(','))].join('\n');
+
+  btn.innerHTML='⏳ Preparazione…';
+  btn.disabled=true;
+
+  try {
+    const dateStr = today.replace(/\//g,'-');
+    await downloads.save({filename:`Brunelli_Lipidi_${dateStr}.csv`, data: lipidiCSV});
+    await downloads.save({filename:`Brunelli_Pressione_${dateStr}.csv`, data: bpCSV});
+    btn.innerHTML='✅ Download completato!';
+    btn.style.background='linear-gradient(135deg,#1d9e75,#0f6e56)';
+  } catch(e){
+    btn.innerHTML = e?.code==='user_cancelled' ? '— Annullato' : '⚠️ Errore download';
+  } finally {
+    btn.disabled=false;
+    setTimeout(()=>{btn.innerHTML=orig;btn.style.background='linear-gradient(135deg,#185fa5,#0c447c)';},2500);
+  }
+}
+
+// ===================== BUILDER RICETTE =====================
+let recipeIngredients=[];
+
+function searchRecipeIng(q){
+  const box=document.getElementById('recipe-ing-suggestions');
+  if(!q){box.style.display='none';return;}
+  const ql=q.toLowerCase();
+  const matches=FOODS.filter(f=>f.name.toLowerCase().includes(ql)).slice(0,8);
+  if(!matches.length){box.style.display='none';return;}
+  box.style.display='block';
+  box.innerHTML=matches.map(f=>`<div onclick="addRecipeIng('${f.name.replace(/'/g,"\\'")}',${f.ldlImpact},'${f.score}')" style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f0f0ea">${f.name} <span style="color:#888;font-size:11px">LDL ${f.ldlImpact>0?'+':''}${f.ldlImpact}</span></div>`).join('');
+}
+
+function addRecipeIng(name,ldl,score){
+  document.getElementById('recipe-ing-search').value='';
+  document.getElementById('recipe-ing-suggestions').style.display='none';
+  if(recipeIngredients.find(i=>i.name===name)) return;
+  recipeIngredients.push({name,ldl:parseInt(ldl),score});
+  renderRecipeIngList();
+}
+
+function removeRecipeIng(i){
+  recipeIngredients.splice(i,1);
+  renderRecipeIngList();
+}
+
+function renderRecipeIngList(){
+  const el=document.getElementById('recipe-ing-list');
+  if(!recipeIngredients.length){el.innerHTML='';return;}
+  const totalLDL=recipeIngredients.reduce((s,i)=>s+i.ldl,0);
+  el.innerHTML=`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">${recipeIngredients.map((ing,i)=>`<span style="background:#f0f9f5;border:1px solid #d0e8df;border-radius:99px;padding:4px 10px;font-size:12px;display:flex;align-items:center;gap:6px">${ing.name}<button onclick="removeRecipeIng(${i})" style="background:none;border:none;cursor:pointer;color:#888;font-size:13px;padding:0">×</button></span>`).join('')}</div><div style="font-size:12px;color:#555">Impatto LDL totale: <strong style="color:${totalLDL<0?'#1d9e75':totalLDL>0?'#e24b4a':'#888'}">${totalLDL>0?'+':''}${totalLDL}</strong></div>`;
+}
+
+function saveRecipe(){
+  const name=document.getElementById('recipe-name').value.trim();
+  if(!name||!recipeIngredients.length) return;
+  const ldl=recipeIngredients.reduce((s,i)=>s+i.ldl,0);
+  const hasC=recipeIngredients.some(i=>i.score==='C');
+  const hasB=recipeIngredients.some(i=>i.score==='B');
+  const score=hasC?'C':hasB?'B':ldl<=-5?'A+':'A';
+  RECIPES.unshift({name,icon:'🍳',ingredients:recipeIngredients.map(i=>i.name),ldlImpact:ldl,score,desc:'Ricetta personale'});
+  recipeIngredients=[];
+  document.getElementById('recipe-name').value='';
+  document.getElementById('recipe-ing-list').innerHTML='';
+  renderMyRecipes();
+}
+
+function renderMyRecipes(){
+  const personal=RECIPES.filter(r=>r.desc==='Ricetta personale');
+  const el=document.getElementById('my-recipes-list');
+  if(!personal.length){el.innerHTML='';return;}
+  el.innerHTML=personal.map(r=>{
+    const cls=r.score==='A+'||r.score==='A'?'score-a':r.score==='B'?'score-b':'score-c';
+    return `<div class="card" style="margin-bottom:8px;display:flex;justify-content:space-between;align-items:center"><div style="flex:1"><div style="font-size:14px;font-weight:500">${r.icon} ${r.name}</div><div style="font-size:11px;color:#888;margin-top:2px">${r.ingredients.join(' · ')}</div></div><span class="meal-score ${cls}">${r.score}</span></div>`;
+  }).join('');
+}
+
+// ===================== OCR ANALISI =====================
+function handleOCRUpload(input){
+  const file = input.files[0];
+  if(!file) return;
+
+  const label = document.getElementById('ocr-label');
+  const preview = document.getElementById('ocr-preview');
+  const img = document.getElementById('ocr-img');
+  const status = document.getElementById('ocr-status');
+  const result = document.getElementById('ocr-result');
+
+  if(file.type.startsWith('image/')){
+    const reader = new FileReader();
+    reader.onload = e => { img.src = e.target.result; preview.style.display='block'; };
+    reader.readAsDataURL(file);
+  } else {
+    preview.style.display='none';
+  }
+
+  label.style.background='#f0f9f5';
+  label.innerHTML=`<div style="font-size:24px;margin-bottom:6px">✅</div><div style="font-size:13px;font-weight:600;color:#1d9e75">${file.name}</div><div style="font-size:11px;color:#888">Tocca per cambiare</div>`;
+
+  status.style.display='block';
+  result.style.display='none';
+
+  // Simulazione OCR (in produzione: ML Kit / Tesseract.js / API Cloud Vision)
+  setTimeout(() => {
+    status.style.display='none';
+    showOCRResult();
+  }, 1800);
+}
+
+function showOCRResult(){
+  const result = document.getElementById('ocr-result');
+  const fields = document.getElementById('ocr-fields');
+  result.style.display='block';
+  const params = [
+    {key:'ldl',label:'LDL (mg/dL)',value:''},
+    {key:'hdl',label:'HDL (mg/dL)',value:''},
+    {key:'trig',label:'Trigliceridi (mg/dL)',value:''},
+    {key:'totale',label:'Colesterolo totale (mg/dL)',value:''},
+    {key:'glicemia',label:'Glicemia (mg/dL)',value:''},
+  ];
+  fields.innerHTML = params.map(p=>`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <div style="flex:1;font-size:13px;color:#555">${p.label}</div>
+      <input type="number" id="ocr-${p.key}" value="${p.value}" placeholder="—" step="0.1"
+        style="width:90px;border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:14px;background:#fff;color:#1a1a18;text-align:right">
+    </div>`).join('');
+}
+
+function saveOCRValues(){
+  const keys = ['ldl','hdl','trig','totale','glicemia'];
+  const labels = {ldl:'LDL',hdl:'HDL',trig:'Trigliceridi',totale:'Col. totale',glicemia:'Glicemia'};
+  const today = new Date().toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'});
+  const parts = keys.map(k=>{
+    const v = parseFloat(document.getElementById('ocr-'+k).value);
+    return v ? `${labels[k]}: ${v}` : '';
+  }).filter(Boolean);
+
+  document.getElementById('ocr-result').innerHTML=`
+    <div style="text-align:center;padding:10px">
+      <div style="font-size:28px;margin-bottom:8px">✅</div>
+      <div style="font-size:14px;font-weight:600;color:#0f6e56;margin-bottom:4px">Valori salvati!</div>
+      <div style="font-size:12px;color:#888">${today}</div>
+      <div style="font-size:12px;color:#555;margin-top:6px">${parts.join(' · ')||'Nessun valore inserito'}</div>
+    </div>`;
+}
+
+// ===================== CHART =====================
+const isDark=matchMedia('(prefers-color-scheme: dark)').matches;
+new Chart(document.getElementById('lipidChart'),{
+  type:'line',
+  data:{
+    labels:['Inizio lug','30 lug'],
+    datasets:[
+      {label:'LDL',data:[145,109],borderColor:'#e24b4a',backgroundColor:'rgba(226,75,74,0.08)',borderWidth:2,pointRadius:5,tension:.3},
+      {label:'HDL',data:[44,43],borderColor:'#1d9e75',backgroundColor:'rgba(29,158,117,0.08)',borderWidth:2,pointRadius:5,tension:.3},
+      {label:'Trigliceridi',data:[66,91],borderColor:'#ba7517',backgroundColor:'rgba(186,117,23,0.08)',borderWidth:2,pointRadius:5,tension:.3}
+    ]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false}},
+    scales:{
+      x:{grid:{color:isDark?'rgba(255,255,255,0.06)':'#eee'},ticks:{color:'#888'}},
+      y:{grid:{color:isDark?'rgba(255,255,255,0.06)':'#eee'},ticks:{color:'#888'},min:0,max:200}
+    }
+  }
+});
+
+// ===================== SERVICE WORKER =====================
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+
+// ===================== INIT =====================
+function showScreen(id,btn){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+
+renderMeals();
+renderCoach();
+computeDailyScore();
+updateWeightChart();
+renderWeightList();
+renderGarmin();
+document.getElementById('wt-date').value = new Date().toISOString().split('T')[0];
+</script>
+</body>
+</html>
